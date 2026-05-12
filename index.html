@@ -251,6 +251,19 @@ small{color:var(--muted);font-size:12px}
 
 .input-row{display:flex;gap:6px}
 .input-row > *{flex:1}
+
+/* Login */
+.login-overlay{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;padding-top:calc(20px + var(--safe-top));padding-bottom:calc(20px + var(--safe-bottom))}
+.login-card{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:28px 22px;width:100%;max-width:360px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.login-logo{font-size:30px;font-weight:900;color:var(--primary);letter-spacing:3px;margin-bottom:4px}
+.login-sub{color:var(--muted);font-size:12px;margin-bottom:22px;text-transform:uppercase;letter-spacing:1.5px;font-weight:600}
+.login-field{margin-bottom:14px;text-align:left}
+.login-field label{display:block;font-size:11px;color:var(--muted);margin-bottom:6px;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+.login-error{color:var(--danger);font-size:13px;margin-top:8px;display:none;background:rgba(255,84,112,.08);border:1px solid rgba(255,84,112,.3);padding:8px;border-radius:8px}
+.login-error.show{display:block}
+.login-remember{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);margin:14px 0 18px;cursor:pointer;text-align:left}
+.login-remember input{width:18px;height:18px;margin:0;flex-shrink:0}
+.login-hint{font-size:11px;color:var(--muted);margin-top:14px;line-height:1.5}
 </style>
 </head>
 <body>
