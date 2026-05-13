@@ -264,9 +264,64 @@ small{color:var(--muted);font-size:12px}
 .login-remember{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);margin:14px 0 18px;cursor:pointer;text-align:left}
 .login-remember input{width:18px;height:18px;margin:0;flex-shrink:0}
 .login-hint{font-size:11px;color:var(--muted);margin-top:14px;line-height:1.5}
+
+/* Food picker */
+.food-list{max-height:240px;overflow-y:auto;-webkit-overflow-scrolling:touch;background:var(--bg-2);border-radius:10px;padding:6px;margin-bottom:12px;border:1px solid var(--border)}
+.food-card{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:var(--card-2);margin-bottom:4px;border:1px solid transparent;width:100%;text-align:left}
+.food-card:active,.food-card:hover{border-color:var(--primary)}
+.food-card-body{flex:1;min-width:0}
+.food-card-name{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text)}
+.food-card-meta{font-size:11px;color:var(--muted);margin-top:2px}
+.food-card-add{color:var(--primary);font-size:22px;font-weight:900;line-height:1;flex-shrink:0}
+.food-empty{padding:20px;text-align:center;color:var(--muted);font-size:12px}
+
+.mb-item{display:flex;align-items:center;gap:8px;padding:9px 11px;background:var(--card-2);border:1px solid var(--border);border-radius:8px;margin-bottom:5px}
+.mb-item-body{flex:1;min-width:0}
+.mb-item-name{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text)}
+.mb-item-qty{font-size:11px;color:var(--muted);margin-top:1px}
+.mb-item-rm{background:rgba(255,84,112,.1);border:1px solid rgba(255,84,112,.3);color:var(--danger);width:30px;height:30px;border-radius:8px;font-size:16px;flex-shrink:0}
+
+.mb-totals{background:rgba(0,212,170,.06);border:1px solid rgba(0,212,170,.25);border-radius:10px;padding:10px;font-size:12px;color:var(--text);line-height:1.7}
+.mb-totals strong{color:var(--primary)}
+
+.qty-quick{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:12px}
+.qty-quick .btn{padding:9px 4px;font-size:12px}
+.qty-preview{background:var(--card-2);border:1px solid var(--border);border-radius:10px;padding:10px;font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.7}
+.qty-preview strong{color:var(--text)}
+
+/* Nutrient breakdown card */
+.nut-row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px}
+.nut-row:last-child{border-bottom:none}
+.nut-row .nut-label{color:var(--muted)}
+.nut-row .nut-value{font-weight:700;color:var(--text)}
+.nut-row .nut-target{font-size:10px;color:var(--muted);margin-left:6px}
+.nut-row.alert .nut-value{color:var(--warn)}
+.nut-row.ok .nut-value{color:var(--primary)}
+.nut-toggle{margin-top:8px;text-align:center;color:var(--muted);font-size:12px;text-decoration:underline;cursor:pointer}
 </style>
 </head>
 <body>
+
+<!-- Login Overlay -->
+<div class="login-overlay" id="loginOverlay">
+  <div class="login-card">
+    <div class="login-logo">DANTON OS</div>
+    <div class="login-sub">Sistema Operacional Pessoal</div>
+    <form onsubmit="event.preventDefault();doLogin()">
+      <div class="login-field">
+        <label>Senha</label>
+        <input type="password" id="loginPwd" autocomplete="current-password" autofocus>
+      </div>
+      <label class="login-remember">
+        <input type="checkbox" id="loginRemember" checked>
+        Lembrar neste dispositivo
+      </label>
+      <button type="submit" class="btn primary" style="width:100%">Entrar</button>
+      <div class="login-error" id="loginError">Senha incorreta</div>
+      <div class="login-hint">Acesso restrito · seus dados ficam apenas neste dispositivo</div>
+    </form>
+  </div>
+</div>
 
 <div class="ios-banner" id="iosBanner">
   📱 Para o app funcionar bem no iPhone/iPad: <strong>abra no Safari</strong> → ⬆ Compartilhar → <strong>"Adicionar à Tela de Início"</strong>. Sem isso, os dados podem não ficar salvos.
@@ -534,6 +589,12 @@ small{color:var(--muted);font-size:12px}
     </div>
 
     <div class="card">
+      <h3>Sessão</h3>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:10px">Você está logado. Use logout para proteger o app em dispositivo compartilhado.</div>
+      <button class="btn danger" style="width:100%" onclick="logout()">🔒 Sair (Logout)</button>
+    </div>
+
+    <div class="card">
       <h3>Backup / Sincronização</h3>
       <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Para usar os mesmos dados em vários dispositivos: exportar de um, importar no outro.</div>
       <div class="btn-row">
@@ -695,10 +756,320 @@ small{color:var(--muted);font-size:12px}
   </div>
 </div>
 
+<!-- Meal Builder Modal (food-based) -->
+<div class="modal-bg" id="foodModal">
+  <div class="modal" style="max-width:600px">
+    <h3>Montar Refeição <button class="close" onclick="closeModal('foodModal')">×</button></h3>
+    <div class="field">
+      <label>Tipo</label>
+      <select id="mbType">
+        <option value="cafe">Café da manhã</option>
+        <option value="almoco">Almoço</option>
+        <option value="lanche">Lanche</option>
+        <option value="jantar">Jantar</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Buscar alimento</label>
+      <input id="foodSearch" placeholder="Ex: patinho, ovo, espinafre..." oninput="renderFoodPicker(this.value)" autocomplete="off" autocapitalize="off" autocorrect="off">
+    </div>
+    <div class="food-list" id="foodList"></div>
+    <div class="section-title">Nesta refeição (<span id="mbCount">0</span>)</div>
+    <div id="mbItems"></div>
+    <div id="mbTotals" class="mb-totals"></div>
+    <div class="btn-row" style="margin-top:10px">
+      <button class="btn primary" style="flex:1" onclick="saveMealBuilt()">Salvar Refeição</button>
+      <button class="btn ghost" onclick="closeModal('foodModal')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Quantity Modal -->
+<div class="modal-bg" id="qtyModal">
+  <div class="modal" style="max-width:380px">
+    <h3 id="qtyTitle">Quantidade <button class="close" onclick="closeModal('qtyModal')">×</button></h3>
+    <div class="field">
+      <label>Gramas (g)</label>
+      <input type="number" inputmode="numeric" id="qtyInput" value="100" min="1" oninput="updateQtyPreview()">
+    </div>
+    <div class="qty-quick">
+      <button class="btn small" onclick="setQty(30)">30g</button>
+      <button class="btn small" onclick="setQty(50)">50g</button>
+      <button class="btn small" onclick="setQty(80)">80g</button>
+      <button class="btn small" onclick="setQty(100)">100g</button>
+      <button class="btn small" onclick="setQty(120)">120g</button>
+      <button class="btn small" onclick="setQty(150)">150g</button>
+      <button class="btn small" onclick="setQty(200)">200g</button>
+      <button class="btn small" onclick="setQty(250)">250g</button>
+      <button class="btn small" onclick="setQty(300)">300g</button>
+    </div>
+    <div id="qtyPreview" class="qty-preview"></div>
+    <div class="btn-row">
+      <button class="btn primary" style="flex:1" onclick="confirmQty()">Adicionar</button>
+      <button class="btn ghost" onclick="closeModal('qtyModal')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
 'use strict';
+
+/* ============= Auth ============= */
+const AUTH_SALT = 'dantonOS_salt_2026_v1_a8f3c2';
+const AUTH_HASH = 'c3456bec0db32f7885674bcb9d5699cde14ce7d8c4c66c60b7f4757d2653b22b';
+const AUTH_KEY = 'dantonOS_authed_v1';
+
+async function sha256(text){
+  const buf = new TextEncoder().encode(text);
+  const digest = await crypto.subtle.digest('SHA-256', buf);
+  return Array.from(new Uint8Array(digest)).map(function(b){return b.toString(16).padStart(2,'0');}).join('');
+}
+
+async function doLogin(){
+  const pwd = document.getElementById('loginPwd').value;
+  const remember = document.getElementById('loginRemember').checked;
+  const hash = await sha256(AUTH_SALT + pwd);
+  if(hash === AUTH_HASH){
+    try{
+      if(remember) localStorage.setItem(AUTH_KEY, hash);
+      else sessionStorage.setItem(AUTH_KEY, hash);
+    }catch(e){}
+    document.getElementById('loginOverlay').style.display = 'none';
+    document.getElementById('loginPwd').value = '';
+    document.getElementById('loginError').classList.remove('show');
+  } else {
+    document.getElementById('loginError').classList.add('show');
+    document.getElementById('loginPwd').value = '';
+    document.getElementById('loginPwd').focus();
+  }
+}
+
+function checkAuth(){
+  let stored = null;
+  try{
+    stored = localStorage.getItem(AUTH_KEY) || sessionStorage.getItem(AUTH_KEY);
+  }catch(e){}
+  if(stored === AUTH_HASH){
+    document.getElementById('loginOverlay').style.display = 'none';
+    return true;
+  }
+  document.getElementById('loginOverlay').style.display = 'flex';
+  setTimeout(function(){ try{ document.getElementById('loginPwd').focus(); }catch(e){} }, 100);
+  return false;
+}
+
+function logout(){
+  if(!confirm('Sair? Vai precisar digitar a senha de novo.')) return;
+  try{
+    localStorage.removeItem(AUTH_KEY);
+    sessionStorage.removeItem(AUTH_KEY);
+  }catch(e){}
+  document.getElementById('loginOverlay').style.display = 'flex';
+  document.getElementById('loginPwd').value = '';
+  setTimeout(function(){ try{ document.getElementById('loginPwd').focus(); }catch(e){} }, 100);
+}
+
+/* ============= Food Database (curated, TBCA-style, per 100g) ============= */
+/* Pode ser substituído/ampliado por foods.json carregado do GitHub Pages */
+const FOOD_DB_DEFAULT = [
+  // CARNES BOVINAS
+  {id:'patinho_cru',n:'Patinho cru',g:'Carnes',kcal:121,prot:21.7,carb:0,gord:3.4,gord_sat:1.4,fib:0,sod:65,cal:5,fer:2.6,pot:339,mag:22,zn:5.0,vita:0,vitc:0,vite:0.3,vitb12:2.5,agua:74},
+  {id:'patinho_cozido',n:'Patinho cozido',g:'Carnes',kcal:217,prot:35.9,carb:0,gord:7.3,gord_sat:2.9,fib:0,sod:65,cal:7,fer:3.8,pot:280,mag:24,zn:6.8,vita:0,vitc:0,vite:0.3,vitb12:2.6,agua:55},
+  {id:'patinho_grelhado',n:'Patinho grelhado',g:'Carnes',kcal:220,prot:35.0,carb:0,gord:8.2,gord_sat:3.2,fib:0,sod:75,cal:8,fer:3.7,pot:310,mag:24,zn:6.5,vita:0,vitc:0,vite:0.3,vitb12:2.5,agua:54},
+  {id:'carne_moida_magra_cozida',n:'Carne moída magra cozida',g:'Carnes',kcal:212,prot:27.3,carb:0,gord:11.0,gord_sat:4.4,fib:0,sod:72,cal:7,fer:2.9,pot:316,mag:22,zn:6.1,vita:0,vitc:0,vite:0.3,vitb12:2.5,agua:58},
+  {id:'contra_file_grelhado',n:'Contra-filé grelhado',g:'Carnes',kcal:247,prot:32.0,carb:0,gord:13.0,gord_sat:5.4,fib:0,sod:70,cal:8,fer:3.0,pot:315,mag:23,zn:6.2,vita:0,vitc:0,vite:0.3,vitb12:2.4,agua:53},
+  {id:'alcatra_grelhada',n:'Alcatra grelhada',g:'Carnes',kcal:226,prot:30.1,carb:0,gord:11.7,gord_sat:4.6,fib:0,sod:68,cal:6,fer:3.1,pot:310,mag:23,zn:6.0,vita:0,vitc:0,vite:0.3,vitb12:2.4,agua:55},
+  {id:'maminha_grelhada',n:'Maminha grelhada',g:'Carnes',kcal:230,prot:31.0,carb:0,gord:12.0,gord_sat:4.7,fib:0,sod:67,cal:7,fer:3.2,pot:308,mag:23,zn:6.0,vita:0,vitc:0,vite:0.3,vitb12:2.5,agua:54},
+  {id:'file_mignon_grelhado',n:'Filé mignon grelhado',g:'Carnes',kcal:220,prot:32.2,carb:0,gord:10.0,gord_sat:4.0,fib:0,sod:66,cal:7,fer:3.0,pot:312,mag:24,zn:5.9,vita:0,vitc:0,vite:0.3,vitb12:2.4,agua:55},
+  {id:'lagarto_cozido',n:'Lagarto cozido',g:'Carnes',kcal:215,prot:33.0,carb:0,gord:9.0,gord_sat:3.6,fib:0,sod:64,cal:7,fer:3.0,pot:300,mag:22,zn:5.8,vita:0,vitc:0,vite:0.3,vitb12:2.4,agua:55},
+  {id:'carne_desfiada_cozida',n:'Carne desfiada cozida',g:'Carnes',kcal:215,prot:32.0,carb:0,gord:9.5,gord_sat:3.8,fib:0,sod:75,cal:7,fer:3.2,pot:300,mag:22,zn:5.8,vita:0,vitc:0,vite:0.3,vitb12:2.4,agua:55},
+  // FRANGO
+  {id:'frango_peito_grelhado',n:'Frango peito sem pele grelhado',g:'Carnes',kcal:159,prot:32.0,carb:0,gord:3.5,gord_sat:1.0,fib:0,sod:75,cal:13,fer:0.9,pot:330,mag:30,zn:1.0,vita:7,vitc:0,vite:0.3,vitb12:0.3,agua:64},
+  {id:'frango_peito_cru',n:'Frango peito sem pele cru',g:'Carnes',kcal:119,prot:22.0,carb:0,gord:3.0,gord_sat:0.9,fib:0,sod:74,cal:11,fer:0.7,pot:255,mag:29,zn:0.9,vita:9,vitc:1,vite:0.2,vitb12:0.3,agua:74},
+  {id:'frango_peito_desfiado',n:'Frango peito desfiado',g:'Carnes',kcal:170,prot:31.0,carb:0,gord:4.5,gord_sat:1.2,fib:0,sod:80,cal:13,fer:1.0,pot:325,mag:30,zn:1.1,vita:7,vitc:0,vite:0.3,vitb12:0.3,agua:62},
+  {id:'frango_coxa_cozida',n:'Frango coxa sem pele cozida',g:'Carnes',kcal:161,prot:27.0,carb:0,gord:6.0,gord_sat:1.7,fib:0,sod:90,cal:12,fer:1.2,pot:240,mag:23,zn:1.7,vita:18,vitc:0,vite:0.3,vitb12:0.3,agua:64},
+  // PEIXES
+  {id:'tilapia_grelhada',n:'Tilápia grelhada',g:'Peixes',kcal:128,prot:26.0,carb:0,gord:3.0,gord_sat:1.0,fib:0,sod:56,cal:14,fer:0.7,pot:380,mag:32,zn:0.4,vita:0,vitc:0,vite:0.4,vitb12:1.9,agua:70},
+  {id:'salmao_grelhado',n:'Salmão grelhado',g:'Peixes',kcal:206,prot:22.0,carb:0,gord:13.0,gord_sat:3.1,fib:0,sod:61,cal:13,fer:0.3,pot:384,mag:30,zn:0.6,vita:50,vitc:0,vite:1.1,vitb12:2.8,agua:64},
+  {id:'sardinha_conserva',n:'Sardinha em conserva',g:'Peixes',kcal:208,prot:24.6,carb:0,gord:12.0,gord_sat:1.7,fib:0,sod:307,cal:382,fer:2.9,pot:397,mag:39,zn:1.3,vita:32,vitc:0,vite:2.0,vitb12:8.9,agua:60},
+  {id:'atum_conserva_agua',n:'Atum em conserva (água)',g:'Peixes',kcal:116,prot:26.0,carb:0,gord:1.0,gord_sat:0.3,fib:0,sod:377,cal:11,fer:1.6,pot:267,mag:27,zn:0.7,vita:14,vitc:0,vite:1.0,vitb12:2.5,agua:70},
+  {id:'atum_conserva_oleo',n:'Atum em conserva (óleo)',g:'Peixes',kcal:198,prot:27.0,carb:0,gord:9.0,gord_sat:2.0,fib:0,sod:354,cal:11,fer:1.3,pot:230,mag:27,zn:0.7,vita:24,vitc:0,vite:1.5,vitb12:2.0,agua:60},
+  {id:'merluza_cozida',n:'Merluza cozida',g:'Peixes',kcal:103,prot:23.0,carb:0,gord:1.0,gord_sat:0.2,fib:0,sod:80,cal:23,fer:0.4,pot:325,mag:33,zn:0.5,vita:6,vitc:0,vite:0.3,vitb12:1.0,agua:75},
+  // OVOS
+  {id:'ovo_galinha_cozido',n:'Ovo de galinha cozido',g:'Ovos',kcal:155,prot:13.0,carb:1.1,gord:11.0,gord_sat:3.3,fib:0,sod:124,cal:50,fer:1.2,pot:138,mag:10,zn:1.0,vita:140,vitc:0,vite:1.0,vitb12:1.1,agua:74},
+  {id:'ovo_galinha_frito',n:'Ovo de galinha frito',g:'Ovos',kcal:196,prot:13.6,carb:0.8,gord:15.3,gord_sat:4.3,fib:0,sod:207,cal:62,fer:1.8,pot:152,mag:13,zn:1.1,vita:160,vitc:0,vite:1.0,vitb12:1.0,agua:69},
+  {id:'ovo_galinha_mexido',n:'Ovo mexido',g:'Ovos',kcal:166,prot:11.0,carb:1.0,gord:12.4,gord_sat:3.6,fib:0,sod:160,cal:65,fer:1.5,pot:142,mag:11,zn:1.0,vita:160,vitc:0,vite:1.0,vitb12:0.9,agua:73},
+  {id:'ovo_galinha_cru',n:'Ovo de galinha cru',g:'Ovos',kcal:143,prot:12.6,carb:0.7,gord:9.5,gord_sat:3.1,fib:0,sod:124,cal:50,fer:1.2,pot:138,mag:10,zn:1.0,vita:140,vitc:0,vite:1.0,vitb12:1.1,agua:76},
+  {id:'clara_ovo_cozida',n:'Clara de ovo cozida',g:'Ovos',kcal:52,prot:11.0,carb:0.7,gord:0.2,gord_sat:0,fib:0,sod:166,cal:7,fer:0.1,pot:163,mag:11,zn:0,vita:0,vitc:0,vite:0,vitb12:0.1,agua:88},
+  {id:'gema_ovo_cozida',n:'Gema de ovo cozida',g:'Ovos',kcal:322,prot:16.0,carb:3.6,gord:27.0,gord_sat:9.6,fib:0,sod:48,cal:129,fer:2.7,pot:109,mag:5,zn:2.3,vita:381,vitc:0,vite:2.6,vitb12:2.0,agua:52},
+  // TUBÉRCULOS
+  {id:'mandioca_cozida',n:'Mandioca cozida',g:'Tubérculos',kcal:125,prot:0.6,carb:30.1,gord:0.3,gord_sat:0,fib:1.6,sod:14,cal:19,fer:0.3,pot:271,mag:21,zn:0.3,vita:0,vitc:21,vite:0.2,vitb12:0,agua:67},
+  {id:'batata_doce_cozida',n:'Batata-doce cozida',g:'Tubérculos',kcal:77,prot:0.9,carb:18.4,gord:0.1,gord_sat:0,fib:2.2,sod:9,cal:21,fer:0.3,pot:230,mag:14,zn:0.2,vita:709,vitc:17,vite:0.3,vitb12:0,agua:79},
+  {id:'batata_doce_assada',n:'Batata-doce assada',g:'Tubérculos',kcal:118,prot:1.7,carb:28.2,gord:0.1,gord_sat:0,fib:2.5,sod:10,cal:23,fer:0.4,pot:280,mag:18,zn:0.3,vita:961,vitc:14,vite:0.4,vitb12:0,agua:68},
+  {id:'batata_inglesa_cozida',n:'Batata inglesa cozida',g:'Tubérculos',kcal:52,prot:1.2,carb:11.9,gord:0.1,gord_sat:0,fib:1.3,sod:2,cal:4,fer:0.2,pot:300,mag:18,zn:0.2,vita:0,vitc:13,vite:0.1,vitb12:0,agua:85},
+  {id:'inhame_cozido',n:'Inhame cozido',g:'Tubérculos',kcal:97,prot:2.1,carb:23.2,gord:0.1,gord_sat:0,fib:2.0,sod:8,cal:14,fer:0.4,pot:512,mag:18,zn:0.3,vita:0,vitc:7,vite:0.3,vitb12:0,agua:73},
+  {id:'cara_cozido',n:'Cará cozido',g:'Tubérculos',kcal:91,prot:1.8,carb:21.5,gord:0.1,gord_sat:0,fib:1.7,sod:6,cal:13,fer:0.3,pot:400,mag:17,zn:0.2,vita:0,vitc:8,vite:0.2,vitb12:0,agua:75},
+  {id:'abobora_moranga_cozida',n:'Abóbora moranga cozida',g:'Tubérculos',kcal:17,prot:0.5,carb:4.0,gord:0.1,gord_sat:0,fib:1.5,sod:1,cal:18,fer:0.5,pot:230,mag:9,zn:0.3,vita:710,vitc:7,vite:1.1,vitb12:0,agua:94},
+  {id:'abobora_japonesa_cozida',n:'Abóbora japonesa (cabotiá) cozida',g:'Tubérculos',kcal:33,prot:1.1,carb:8.0,gord:0.1,gord_sat:0,fib:2.5,sod:1,cal:21,fer:0.5,pot:340,mag:14,zn:0.3,vita:300,vitc:11,vite:1.2,vitb12:0,agua:90},
+  // VEGETAIS FOLHOSOS
+  {id:'espinafre_cru',n:'Espinafre cru',g:'Vegetais',kcal:23,prot:2.9,carb:3.6,gord:0.4,gord_sat:0,fib:2.2,sod:24,cal:99,fer:2.7,pot:558,mag:79,zn:0.5,vita:469,vitc:28,vite:2.0,vitb12:0,agua:91},
+  {id:'espinafre_refogado',n:'Espinafre refogado',g:'Vegetais',kcal:28,prot:2.8,carb:4.0,gord:0.8,gord_sat:0.1,fib:2.0,sod:90,cal:140,fer:3.5,pot:540,mag:75,zn:0.5,vita:573,vitc:9,vite:2.1,vitb12:0,agua:90},
+  {id:'couve_crua',n:'Couve manteiga crua',g:'Vegetais',kcal:27,prot:2.9,carb:4.3,gord:0.5,gord_sat:0,fib:3.1,sod:9,cal:131,fer:0.5,pot:340,mag:23,zn:0.4,vita:330,vitc:96,vite:1.5,vitb12:0,agua:90},
+  {id:'couve_refogada',n:'Couve manteiga refogada',g:'Vegetais',kcal:90,prot:3.5,carb:6.5,gord:6.0,gord_sat:1.0,fib:4.0,sod:200,cal:177,fer:0.7,pot:300,mag:25,zn:0.5,vita:425,vitc:80,vite:1.6,vitb12:0,agua:80},
+  {id:'alface_lisa',n:'Alface lisa',g:'Vegetais',kcal:11,prot:1.3,carb:1.7,gord:0.2,gord_sat:0,fib:2.0,sod:7,cal:38,fer:0.4,pot:267,mag:9,zn:0.2,vita:118,vitc:16,vite:0.3,vitb12:0,agua:95},
+  {id:'alface_crespa',n:'Alface crespa',g:'Vegetais',kcal:14,prot:1.4,carb:2.4,gord:0.2,gord_sat:0,fib:1.8,sod:7,cal:38,fer:0.4,pot:267,mag:9,zn:0.2,vita:200,vitc:18,vite:0.3,vitb12:0,agua:95},
+  {id:'rucula',n:'Rúcula',g:'Vegetais',kcal:23,prot:2.5,carb:3.7,gord:0.4,gord_sat:0,fib:1.6,sod:27,cal:160,fer:1.5,pot:369,mag:47,zn:0.5,vita:237,vitc:15,vite:0.4,vitb12:0,agua:91},
+  {id:'agriao',n:'Agrião',g:'Vegetais',kcal:18,prot:2.1,carb:2.6,gord:0.4,gord_sat:0,fib:2.1,sod:41,cal:133,fer:0.2,pot:330,mag:14,zn:0.1,vita:160,vitc:43,vite:1.0,vitb12:0,agua:93},
+  {id:'repolho_cru',n:'Repolho cru',g:'Vegetais',kcal:23,prot:1.4,carb:5.4,gord:0.1,gord_sat:0,fib:2.5,sod:5,cal:35,fer:0.3,pot:230,mag:11,zn:0.2,vita:8,vitc:36,vite:0.1,vitb12:0,agua:92},
+  // LEGUMES
+  {id:'tomate',n:'Tomate',g:'Vegetais',kcal:18,prot:0.9,carb:3.9,gord:0.2,gord_sat:0,fib:1.2,sod:2,cal:8,fer:0.3,pot:222,mag:9,zn:0.2,vita:55,vitc:21,vite:0.4,vitb12:0,agua:94},
+  {id:'tomate_cereja',n:'Tomate cereja',g:'Vegetais',kcal:21,prot:1.0,carb:4.5,gord:0.3,gord_sat:0,fib:1.4,sod:5,cal:9,fer:0.3,pot:240,mag:10,zn:0.2,vita:60,vitc:23,vite:0.5,vitb12:0,agua:93},
+  {id:'brocolis_cozido',n:'Brócolis cozido',g:'Vegetais',kcal:25,prot:2.1,carb:4.4,gord:0.4,gord_sat:0,fib:3.4,sod:33,cal:51,fer:0.5,pot:230,mag:18,zn:0.3,vita:35,vitc:42,vite:0.8,vitb12:0,agua:90},
+  {id:'couve_flor_cozida',n:'Couve-flor cozida',g:'Vegetais',kcal:19,prot:1.6,carb:4.0,gord:0.3,gord_sat:0,fib:2.0,sod:15,cal:16,fer:0.3,pot:142,mag:9,zn:0.3,vita:5,vitc:38,vite:0.1,vitb12:0,agua:92},
+  {id:'abobrinha_cozida',n:'Abobrinha cozida',g:'Vegetais',kcal:15,prot:1.0,carb:3.1,gord:0.1,gord_sat:0,fib:1.5,sod:3,cal:25,fer:0.5,pot:215,mag:18,zn:0.3,vita:33,vitc:11,vite:0.1,vitb12:0,agua:94},
+  {id:'cenoura_cozida',n:'Cenoura cozida',g:'Vegetais',kcal:33,prot:0.8,carb:7.7,gord:0.2,gord_sat:0,fib:2.6,sod:58,cal:30,fer:0.3,pot:230,mag:9,zn:0.2,vita:835,vitc:3,vite:0.4,vitb12:0,agua:90},
+  {id:'cenoura_crua',n:'Cenoura crua',g:'Vegetais',kcal:34,prot:1.3,carb:7.7,gord:0.2,gord_sat:0,fib:3.2,sod:65,cal:27,fer:0.2,pot:315,mag:11,zn:0.2,vita:835,vitc:5,vite:0.4,vitb12:0,agua:89},
+  {id:'cebola_crua',n:'Cebola crua',g:'Vegetais',kcal:39,prot:1.7,carb:8.9,gord:0.4,gord_sat:0,fib:2.2,sod:1,cal:14,fer:0.2,pot:177,mag:11,zn:0.2,vita:0,vitc:5,vite:0.1,vitb12:0,agua:88},
+  {id:'alho',n:'Alho cru',g:'Vegetais',kcal:113,prot:7.0,carb:23.9,gord:0.2,gord_sat:0,fib:4.3,sod:5,cal:14,fer:0.8,pot:535,mag:21,zn:1.0,vita:0,vitc:8,vite:0.1,vitb12:0,agua:64},
+  {id:'pimentao_verde',n:'Pimentão verde',g:'Vegetais',kcal:21,prot:1.1,carb:4.9,gord:0.2,gord_sat:0,fib:2.6,sod:2,cal:6,fer:0.3,pot:175,mag:7,zn:0.2,vita:18,vitc:100,vite:0.4,vitb12:0,agua:93},
+  {id:'pimentao_vermelho',n:'Pimentão vermelho',g:'Vegetais',kcal:31,prot:1.3,carb:6.4,gord:0.4,gord_sat:0,fib:2.1,sod:3,cal:8,fer:0.4,pot:211,mag:12,zn:0.3,vita:312,vitc:128,vite:1.6,vitb12:0,agua:92},
+  {id:'pepino',n:'Pepino',g:'Vegetais',kcal:10,prot:0.9,carb:2.0,gord:0.1,gord_sat:0,fib:1.1,sod:4,cal:13,fer:0.3,pot:147,mag:14,zn:0.1,vita:5,vitc:6,vite:0.1,vitb12:0,agua:96},
+  {id:'beterraba_cozida',n:'Beterraba cozida',g:'Vegetais',kcal:49,prot:1.9,carb:11.1,gord:0.1,gord_sat:0,fib:1.9,sod:39,cal:18,fer:0.3,pot:330,mag:24,zn:0.3,vita:5,vitc:3,vite:0.1,vitb12:0,agua:86},
+  {id:'berinjela_cozida',n:'Berinjela cozida',g:'Vegetais',kcal:24,prot:1.0,carb:5.7,gord:0.2,gord_sat:0,fib:2.5,sod:2,cal:9,fer:0.2,pot:220,mag:11,zn:0.2,vita:2,vitc:1,vite:0.4,vitb12:0,agua:90},
+  {id:'quiabo_cozido',n:'Quiabo cozido',g:'Vegetais',kcal:33,prot:1.9,carb:7.5,gord:0.2,gord_sat:0,fib:3.2,sod:8,cal:81,fer:0.6,pot:299,mag:57,zn:0.6,vita:36,vitc:23,vite:0.4,vitb12:0,agua:90},
+  {id:'vagem_cozida',n:'Vagem cozida',g:'Vegetais',kcal:25,prot:1.8,carb:5.7,gord:0.2,gord_sat:0,fib:3.4,sod:1,cal:37,fer:0.6,pot:209,mag:25,zn:0.3,vita:35,vitc:9,vite:0.4,vitb12:0,agua:90},
+  {id:'chuchu_cozido',n:'Chuchu cozido',g:'Vegetais',kcal:17,prot:0.6,carb:4.2,gord:0.1,gord_sat:0,fib:1.0,sod:1,cal:12,fer:0.2,pot:125,mag:8,zn:0.4,vita:0,vitc:5,vite:0.1,vitb12:0,agua:94},
+  {id:'ervilha_cozida',n:'Ervilha cozida',g:'Vegetais',kcal:62,prot:5.0,carb:9.9,gord:0.4,gord_sat:0.1,fib:5.6,sod:3,cal:14,fer:1.0,pot:230,mag:25,zn:1.0,vita:36,vitc:17,vite:0.1,vitb12:0,agua:83},
+  // FRUTAS
+  {id:'banana_prata',n:'Banana prata',g:'Frutas',kcal:98,prot:1.3,carb:26.0,gord:0.1,gord_sat:0,fib:2.0,sod:1,cal:8,fer:0.4,pot:358,mag:27,zn:0.2,vita:3,vitc:8,vite:0.1,vitb12:0,agua:71},
+  {id:'banana_nanica',n:'Banana nanica',g:'Frutas',kcal:92,prot:1.4,carb:23.8,gord:0.1,gord_sat:0,fib:1.9,sod:1,cal:5,fer:0.3,pot:358,mag:27,zn:0.2,vita:3,vitc:8,vite:0.1,vitb12:0,agua:74},
+  {id:'maca_casca',n:'Maçã com casca',g:'Frutas',kcal:56,prot:0.3,carb:15.2,gord:0.1,gord_sat:0,fib:1.3,sod:0,cal:2,fer:0.1,pot:75,mag:2,zn:0,vita:5,vitc:2,vite:0.2,vitb12:0,agua:84},
+  {id:'pera',n:'Pera com casca',g:'Frutas',kcal:53,prot:0.3,carb:14.1,gord:0.4,gord_sat:0,fib:2.2,sod:0,cal:5,fer:0.1,pot:75,mag:4,zn:0,vita:1,vitc:4,vite:0.1,vitb12:0,agua:85},
+  {id:'laranja_pera',n:'Laranja pera',g:'Frutas',kcal:37,prot:1.0,carb:8.7,gord:0.1,gord_sat:0,fib:0.8,sod:0,cal:35,fer:0.1,pot:163,mag:5,zn:0.1,vita:8,vitc:57,vite:0.2,vitb12:0,agua:89},
+  {id:'limao_tahiti',n:'Limão tahiti',g:'Frutas',kcal:27,prot:1.1,carb:8.7,gord:0.5,gord_sat:0,fib:1.2,sod:1,cal:26,fer:0.5,pot:138,mag:8,zn:0.1,vita:0,vitc:38,vite:0.1,vitb12:0,agua:90},
+  {id:'kiwi',n:'Kiwi',g:'Frutas',kcal:51,prot:1.1,carb:11.5,gord:0.6,gord_sat:0,fib:2.0,sod:3,cal:35,fer:0.3,pot:312,mag:17,zn:0.1,vita:5,vitc:71,vite:1.5,vitb12:0,agua:84},
+  {id:'abacaxi',n:'Abacaxi',g:'Frutas',kcal:48,prot:0.9,carb:12.3,gord:0.1,gord_sat:0,fib:1.0,sod:1,cal:22,fer:0.3,pot:131,mag:18,zn:0.1,vita:3,vitc:34,vite:0.1,vitb12:0,agua:86},
+  {id:'abacate',n:'Abacate',g:'Frutas',kcal:96,prot:1.2,carb:6.0,gord:8.4,gord_sat:1.4,fib:6.3,sod:2,cal:8,fer:0.2,pot:206,mag:15,zn:0.2,vita:13,vitc:8,vite:1.3,vitb12:0,agua:84},
+  {id:'manga_rosa',n:'Manga rosa',g:'Frutas',kcal:72,prot:0.9,carb:18.0,gord:0.2,gord_sat:0,fib:2.1,sod:1,cal:8,fer:0.1,pot:138,mag:8,zn:0.1,vita:38,vitc:17,vite:0.6,vitb12:0,agua:81},
+  {id:'manga_palmer',n:'Manga palmer',g:'Frutas',kcal:64,prot:0.4,carb:17.0,gord:0.2,gord_sat:0,fib:1.7,sod:1,cal:8,fer:0.1,pot:138,mag:8,zn:0.1,vita:54,vitc:18,vite:0.7,vitb12:0,agua:82},
+  {id:'melancia',n:'Melancia',g:'Frutas',kcal:33,prot:0.9,carb:8.1,gord:0.2,gord_sat:0,fib:0.1,sod:1,cal:7,fer:0.2,pot:112,mag:10,zn:0.1,vita:28,vitc:8,vite:0.1,vitb12:0,agua:91},
+  {id:'melao',n:'Melão',g:'Frutas',kcal:28,prot:0.6,carb:7.5,gord:0.1,gord_sat:0,fib:0.3,sod:11,cal:9,fer:0.2,pot:267,mag:11,zn:0.2,vita:169,vitc:37,vite:0.1,vitb12:0,agua:91},
+  {id:'uva_italia',n:'Uva itália',g:'Frutas',kcal:60,prot:0.6,carb:15.0,gord:0.2,gord_sat:0,fib:0.9,sod:1,cal:10,fer:0.2,pot:191,mag:7,zn:0.1,vita:3,vitc:3,vite:0.2,vitb12:0,agua:84},
+  {id:'morango',n:'Morango',g:'Frutas',kcal:30,prot:0.9,carb:6.8,gord:0.3,gord_sat:0,fib:1.7,sod:1,cal:14,fer:0.4,pot:165,mag:12,zn:0.1,vita:1,vitc:64,vite:0.3,vitb12:0,agua:91},
+  {id:'coco_fresco',n:'Coco fresco',g:'Frutas',kcal:406,prot:3.7,carb:10.4,gord:42.0,gord_sat:34.0,fib:5.4,sod:13,cal:14,fer:1.8,pot:354,mag:32,zn:0.9,vita:0,vitc:3,vite:0.7,vitb12:0,agua:43},
+  {id:'maracuja',n:'Maracujá',g:'Frutas',kcal:68,prot:2.0,carb:12.3,gord:2.1,gord_sat:0.2,fib:1.1,sod:5,cal:5,fer:0.6,pot:338,mag:17,zn:0.1,vita:64,vitc:30,vite:0.2,vitb12:0,agua:84},
+  {id:'goiaba',n:'Goiaba branca',g:'Frutas',kcal:54,prot:1.1,carb:13.0,gord:0.4,gord_sat:0,fib:6.3,sod:3,cal:5,fer:0.2,pot:198,mag:7,zn:0.1,vita:31,vitc:80,vite:0.7,vitb12:0,agua:85},
+  {id:'tangerina',n:'Tangerina (mexerica)',g:'Frutas',kcal:38,prot:0.8,carb:9.6,gord:0.1,gord_sat:0,fib:1.2,sod:1,cal:18,fer:0.1,pot:131,mag:5,zn:0.1,vita:33,vitc:31,vite:0.2,vitb12:0,agua:88},
+  // CEREAIS / LEGUMINOSAS
+  {id:'arroz_branco_cozido',n:'Arroz branco cozido',g:'Cereais',kcal:128,prot:2.5,carb:28.1,gord:0.2,gord_sat:0,fib:1.6,sod:1,cal:4,fer:0.5,pot:14,mag:8,zn:0.5,vita:0,vitc:0,vite:0.1,vitb12:0,agua:69},
+  {id:'arroz_integral_cozido',n:'Arroz integral cozido',g:'Cereais',kcal:124,prot:2.6,carb:25.8,gord:1.0,gord_sat:0.2,fib:2.7,sod:1,cal:5,fer:0.3,pot:75,mag:43,zn:0.7,vita:0,vitc:0,vite:0.2,vitb12:0,agua:70},
+  {id:'feijao_preto_cozido',n:'Feijão preto cozido',g:'Leguminosas',kcal:77,prot:4.5,carb:14.0,gord:0.5,gord_sat:0.1,fib:8.4,sod:2,cal:29,fer:1.5,pot:256,mag:40,zn:0.7,vita:0,vitc:0,vite:0.1,vitb12:0,agua:72},
+  {id:'feijao_carioca_cozido',n:'Feijão carioca cozido',g:'Leguminosas',kcal:76,prot:4.8,carb:13.6,gord:0.5,gord_sat:0.1,fib:8.5,sod:2,cal:27,fer:1.3,pot:255,mag:42,zn:0.7,vita:0,vitc:0,vite:0.1,vitb12:0,agua:72},
+  {id:'lentilha_cozida',n:'Lentilha cozida',g:'Leguminosas',kcal:93,prot:6.3,carb:16.3,gord:0.5,gord_sat:0,fib:7.9,sod:2,cal:16,fer:1.5,pot:220,mag:22,zn:1.0,vita:0,vitc:1,vite:0.1,vitb12:0,agua:73},
+  {id:'grao_bico_cozido',n:'Grão-de-bico cozido',g:'Leguminosas',kcal:121,prot:7.5,carb:18.0,gord:2.6,gord_sat:0.3,fib:7.6,sod:6,cal:21,fer:1.9,pot:300,mag:48,zn:1.3,vita:1,vitc:1,vite:0.4,vitb12:0,agua:62},
+  {id:'quinoa_cozida',n:'Quinoa cozida',g:'Cereais',kcal:120,prot:4.4,carb:21.3,gord:1.9,gord_sat:0.2,fib:2.8,sod:7,cal:17,fer:1.5,pot:172,mag:64,zn:1.1,vita:0,vitc:0,vite:0.6,vitb12:0,agua:72},
+  {id:'aveia_flocos',n:'Aveia em flocos crua',g:'Cereais',kcal:394,prot:13.9,carb:66.6,gord:8.5,gord_sat:1.5,fib:9.1,sod:5,cal:48,fer:4.4,pot:336,mag:119,zn:2.6,vita:0,vitc:0,vite:0.7,vitb12:0,agua:10},
+  {id:'pao_integral',n:'Pão integral',g:'Cereais',kcal:253,prot:9.4,carb:49.0,gord:3.6,gord_sat:0.7,fib:6.9,sod:506,cal:107,fer:2.5,pot:248,mag:75,zn:1.4,vita:0,vitc:0,vite:0.4,vitb12:0,agua:36},
+  {id:'pao_frances',n:'Pão francês',g:'Cereais',kcal:300,prot:8.0,carb:58.6,gord:3.1,gord_sat:0.7,fib:2.3,sod:582,cal:16,fer:1.5,pot:135,mag:24,zn:0.7,vita:0,vitc:0,vite:0.1,vitb12:0,agua:30},
+  {id:'tapioca_pronta',n:'Tapioca pronta',g:'Cereais',kcal:240,prot:0.1,carb:60.0,gord:0,gord_sat:0,fib:0.5,sod:1,cal:7,fer:0.1,pot:11,mag:1,zn:0.1,vita:0,vitc:0,vite:0,vitb12:0,agua:11},
+  {id:'goma_tapioca',n:'Goma de tapioca hidratada',g:'Cereais',kcal:194,prot:0.1,carb:48.0,gord:0,gord_sat:0,fib:0.4,sod:1,cal:7,fer:0.1,pot:11,mag:1,zn:0.1,vita:0,vitc:0,vite:0,vitb12:0,agua:50},
+  {id:'milho_verde_cozido',n:'Milho verde cozido',g:'Cereais',kcal:138,prot:5.0,carb:28.6,gord:1.5,gord_sat:0.2,fib:4.5,sod:1,cal:3,fer:0.5,pot:175,mag:28,zn:0.6,vita:10,vitc:5,vite:0.1,vitb12:0,agua:64},
+  // SEMENTES E OLEAGINOSAS
+  {id:'chia_seca',n:'Chia seca',g:'Sementes',kcal:486,prot:16.5,carb:42.1,gord:30.7,gord_sat:3.3,fib:34.4,sod:16,cal:631,fer:7.7,pot:407,mag:335,zn:4.6,vita:5,vitc:2,vite:0.5,vitb12:0,agua:6},
+  {id:'linhaca_dourada',n:'Linhaça dourada',g:'Sementes',kcal:495,prot:14.1,carb:43.3,gord:32.3,gord_sat:3.7,fib:33.5,sod:30,cal:255,fer:5.7,pot:813,mag:392,zn:4.3,vita:0,vitc:0.6,vite:0.3,vitb12:0,agua:7},
+  {id:'castanha_para',n:'Castanha do pará',g:'Sementes',kcal:643,prot:14.5,carb:15.1,gord:63.5,gord_sat:15.1,fib:7.9,sod:1,cal:146,fer:2.3,pot:651,mag:376,zn:4.1,vita:0,vitc:0.7,vite:7.0,vitb12:0,agua:3},
+  {id:'castanha_caju',n:'Castanha de caju torrada',g:'Sementes',kcal:570,prot:18.0,carb:29.0,gord:46.0,gord_sat:9.2,fib:3.7,sod:13,cal:33,fer:4.0,pot:565,mag:260,zn:5.7,vita:0,vitc:0.5,vite:0.9,vitb12:0,agua:3},
+  {id:'amendoa',n:'Amêndoa',g:'Sementes',kcal:581,prot:21.6,carb:19.5,gord:50.6,gord_sat:3.8,fib:11.6,sod:1,cal:264,fer:3.7,pot:705,mag:268,zn:3.1,vita:1,vitc:0,vite:25.6,vitb12:0,agua:4},
+  {id:'noz',n:'Noz',g:'Sementes',kcal:620,prot:14.0,carb:18.4,gord:59.4,gord_sat:6.1,fib:5.2,sod:2,cal:117,fer:2.6,pot:441,mag:158,zn:3.1,vita:1,vitc:1,vite:0.7,vitb12:0,agua:4},
+  {id:'amendoim_torrado',n:'Amendoim torrado',g:'Sementes',kcal:544,prot:27.0,carb:20.3,gord:43.9,gord_sat:6.2,fib:8.0,sod:5,cal:54,fer:2.2,pot:705,mag:176,zn:3.3,vita:0,vitc:0,vite:8.3,vitb12:0,agua:2},
+  // LATICÍNIOS
+  {id:'leite_integral',n:'Leite integral',g:'Laticínios',kcal:58,prot:2.9,carb:4.6,gord:3.0,gord_sat:1.9,fib:0,sod:43,cal:113,fer:0,pot:138,mag:11,zn:0.4,vita:31,vitc:1,vite:0.1,vitb12:0.4,agua:88},
+  {id:'leite_desnatado',n:'Leite desnatado',g:'Laticínios',kcal:34,prot:3.0,carb:4.9,gord:0.1,gord_sat:0.1,fib:0,sod:51,cal:120,fer:0,pot:138,mag:11,zn:0.4,vita:1,vitc:1,vite:0,vitb12:0.4,agua:91},
+  {id:'iogurte_natural_integral',n:'Iogurte natural integral',g:'Laticínios',kcal:63,prot:4.1,carb:4.7,gord:3.0,gord_sat:1.9,fib:0,sod:46,cal:143,fer:0,pot:155,mag:14,zn:0.6,vita:27,vitc:0.5,vite:0.1,vitb12:0.4,agua:88},
+  {id:'iogurte_natural_desnatado',n:'Iogurte natural desnatado',g:'Laticínios',kcal:41,prot:4.6,carb:5.1,gord:0.2,gord_sat:0.1,fib:0,sod:52,cal:160,fer:0.1,pot:200,mag:16,zn:0.8,vita:1,vitc:0.7,vite:0,vitb12:0.5,agua:90},
+  {id:'iogurte_grego',n:'Iogurte grego natural',g:'Laticínios',kcal:97,prot:9.0,carb:3.9,gord:5.0,gord_sat:3.3,fib:0,sod:35,cal:100,fer:0,pot:141,mag:11,zn:0.5,vita:46,vitc:0,vite:0.1,vitb12:0.6,agua:81},
+  {id:'queijo_cottage',n:'Queijo cottage',g:'Laticínios',kcal:88,prot:14.0,carb:3.4,gord:2.3,gord_sat:1.5,fib:0,sod:330,cal:60,fer:0.1,pot:84,mag:8,zn:0.4,vita:30,vitc:0,vite:0.1,vitb12:0.5,agua:80},
+  {id:'queijo_minas_frescal',n:'Queijo minas frescal',g:'Laticínios',kcal:264,prot:17.4,carb:3.2,gord:20.2,gord_sat:13.2,fib:0,sod:346,cal:579,fer:0.3,pot:75,mag:18,zn:1.9,vita:142,vitc:0,vite:0.2,vitb12:1.0,agua:55},
+  {id:'queijo_mussarela',n:'Queijo mussarela',g:'Laticínios',kcal:280,prot:22.2,carb:3.1,gord:20.5,gord_sat:12.0,fib:0,sod:530,cal:875,fer:0.2,pot:95,mag:21,zn:2.8,vita:170,vitc:0,vite:0.2,vitb12:0.8,agua:48},
+  {id:'requeijao_light',n:'Requeijão light',g:'Laticínios',kcal:175,prot:9.5,carb:4.0,gord:13.0,gord_sat:8.0,fib:0,sod:445,cal:300,fer:0.2,pot:80,mag:12,zn:0.8,vita:120,vitc:0,vite:0.2,vitb12:0.5,agua:65},
+  // ÓLEOS E GORDURAS
+  {id:'azeite_extra_virgem',n:'Azeite extra virgem',g:'Óleos',kcal:884,prot:0,carb:0,gord:100,gord_sat:14.0,fib:0,sod:2,cal:1,fer:0.6,pot:1,mag:0,zn:0,vita:0,vitc:0,vite:14.4,vitb12:0,agua:0},
+  {id:'oleo_coco',n:'Óleo de coco',g:'Óleos',kcal:884,prot:0,carb:0,gord:100,gord_sat:86.5,fib:0,sod:0,cal:0,fer:0,pot:0,mag:0,zn:0,vita:0,vitc:0,vite:0.1,vitb12:0,agua:0},
+  {id:'manteiga',n:'Manteiga sem sal',g:'Óleos',kcal:717,prot:0.9,carb:0.1,gord:81.1,gord_sat:51.4,fib:0,sod:11,cal:24,fer:0,pot:24,mag:2,zn:0.1,vita:684,vitc:0,vite:2.3,vitb12:0.2,agua:18},
+  {id:'manteiga_ghee',n:'Manteiga ghee',g:'Óleos',kcal:900,prot:0.3,carb:0,gord:99.8,gord_sat:62.0,fib:0,sod:2,cal:4,fer:0,pot:5,mag:0,zn:0,vita:840,vitc:0,vite:2.8,vitb12:0,agua:0},
+  // SUPLEMENTOS
+  {id:'whey_concentrado',n:'Whey protein concentrado',g:'Suplementos',kcal:380,prot:70.0,carb:8.0,gord:6.0,gord_sat:3.0,fib:1.0,sod:340,cal:400,fer:1.5,pot:600,mag:60,zn:3.5,vita:0,vitc:0,vite:0,vitb12:1.0,agua:5},
+  {id:'whey_isolado',n:'Whey protein isolado',g:'Suplementos',kcal:370,prot:90.0,carb:1.0,gord:1.0,gord_sat:0.5,fib:0,sod:200,cal:300,fer:0.5,pot:400,mag:30,zn:1.5,vita:0,vitc:0,vite:0,vitb12:0.5,agua:5},
+  {id:'albumina',n:'Albumina',g:'Suplementos',kcal:380,prot:80.0,carb:5.0,gord:1.0,gord_sat:0.3,fib:0,sod:1100,cal:60,fer:0.7,pot:1200,mag:75,zn:0.5,vita:0,vitc:0,vite:0,vitb12:0.2,agua:8},
+  {id:'caseina',n:'Caseína',g:'Suplementos',kcal:380,prot:80.0,carb:5.0,gord:1.5,gord_sat:0.9,fib:0,sod:500,cal:1500,fer:0.3,pot:300,mag:30,zn:3.0,vita:0,vitc:0,vite:0,vitb12:0.8,agua:5},
+  // BEBIDAS / OUTROS
+  {id:'cafe_preto',n:'Café preto sem açúcar',g:'Bebidas',kcal:2,prot:0.1,carb:0.4,gord:0,gord_sat:0,fib:0,sod:2,cal:2,fer:0,pot:49,mag:3,zn:0,vita:0,vitc:0,vite:0,vitb12:0,agua:99},
+  {id:'cha_verde',n:'Chá verde',g:'Bebidas',kcal:1,prot:0,carb:0,gord:0,gord_sat:0,fib:0,sod:1,cal:0,fer:0,pot:8,mag:0,zn:0,vita:0,vitc:0,vite:0,vitb12:0,agua:99},
+  {id:'agua_coco',n:'Água de coco',g:'Bebidas',kcal:22,prot:0.1,carb:5.3,gord:0,gord_sat:0,fib:1.1,sod:105,cal:24,fer:0.3,pot:250,mag:25,zn:0.1,vita:0,vitc:2,vite:0,vitb12:0,agua:94},
+  {id:'suco_laranja_natural',n:'Suco de laranja natural',g:'Bebidas',kcal:41,prot:0.7,carb:9.4,gord:0.1,gord_sat:0,fib:0.3,sod:1,cal:11,fer:0.2,pot:200,mag:11,zn:0.1,vita:8,vitc:50,vite:0.1,vitb12:0,agua:88},
+  {id:'mel',n:'Mel de abelha',g:'Outros',kcal:309,prot:0.4,carb:84.0,gord:0,gord_sat:0,fib:0,sod:7,cal:5,fer:0.4,pot:51,mag:3,zn:0.2,vita:0,vitc:0,vite:0,vitb12:0,agua:17},
+  {id:'azeitona_preta',n:'Azeitona preta',g:'Outros',kcal:194,prot:1.6,carb:6.0,gord:18.0,gord_sat:2.4,fib:5.0,sod:875,cal:88,fer:6.3,pot:8,mag:4,zn:0.2,vita:35,vitc:0,vite:1.7,vitb12:0,agua:65},
+  {id:'cogumelo_paris',n:'Cogumelo Paris cozido',g:'Vegetais',kcal:24,prot:2.7,carb:4.4,gord:0.4,gord_sat:0,fib:1.7,sod:6,cal:5,fer:1.4,pot:330,mag:9,zn:0.7,vita:0,vitc:2,vite:0.1,vitb12:0.1,agua:91},
+  {id:'shitake_cozido',n:'Shitake cozido',g:'Vegetais',kcal:56,prot:1.6,carb:14.4,gord:0.2,gord_sat:0,fib:2.1,sod:4,cal:3,fer:0.4,pot:117,mag:14,zn:1.3,vita:0,vitc:0,vite:0,vitb12:0,agua:83}
+];
+
+let FOOD_DB = FOOD_DB_DEFAULT.slice();
+
+/* Async loader: tenta carregar foods.json (TBCA completo) do mesmo domínio */
+async function tryLoadFullDB(){
+  try{
+    const res = await fetch('foods.json', {cache:'force-cache'});
+    if(res.ok){
+      const arr = await res.json();
+      if(Array.isArray(arr) && arr.length > FOOD_DB_DEFAULT.length){
+        FOOD_DB = arr;
+        console.log('DANTON OS: foods.json carregado ('+arr.length+' alimentos)');
+        try{ renderFoodPicker(document.getElementById('foodSearch').value || ''); }catch(e){}
+      }
+    }
+  }catch(e){ /* silent — usa default */ }
+}
+
+function findFood(id){
+  for(let i=0;i<FOOD_DB.length;i++) if(FOOD_DB[i].id===id) return FOOD_DB[i];
+  return null;
+}
+
+function searchFoods(query, limit){
+  query = (query||'').toLowerCase().trim();
+  limit = limit || 80;
+  if(!query) return FOOD_DB.slice(0, limit);
+  const norm = function(s){return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');};
+  const q = norm(query);
+  const exact = [], starts = [], contains = [];
+  for(let i=0;i<FOOD_DB.length;i++){
+    const f = FOOD_DB[i];
+    const n = norm(f.n), g = norm(f.g);
+    if(n === q) exact.push(f);
+    else if(n.indexOf(q) === 0) starts.push(f);
+    else if(n.indexOf(q) > -1 || g.indexOf(q) > -1) contains.push(f);
+    if(exact.length + starts.length + contains.length >= limit) break;
+  }
+  return exact.concat(starts).concat(contains).slice(0, limit);
+}
+
+function computeNutrients(items){
+  /* items: [{foodId, qty_g}, ...]  -> retorna soma de todos os nutrientes */
+  const totals = {kcal:0, prot:0, carb:0, gord:0, gord_sat:0, fib:0, sod:0, cal:0, fer:0, pot:0, mag:0, zn:0, vita:0, vitc:0, vite:0, vitb12:0, agua:0};
+  for(let i=0;i<items.length;i++){
+    const f = findFood(items[i].foodId);
+    if(!f) continue;
+    const factor = (+items[i].qty_g||0) / 100;
+    for(const k in totals){
+      if(typeof f[k] === 'number') totals[k] += f[k] * factor;
+    }
+  }
+  // arredondar
+  for(const k in totals){ totals[k] = Math.round(totals[k]*10)/10; }
+  return totals;
+}
 
 /* ============= Storage (safe) ============= */
 const DB_KEY = 'dantonOS_v1';
@@ -756,32 +1127,32 @@ function toast(msg, ms=1600){
 /* ============= Data ============= */
 const MEAL_BANK = {
   cafe:[
-    {n:'Ovos + tomate + espinafre', p:18, c:280},
-    {n:'Manga moderada + chia + coco + ovos', p:16, c:340},
-    {n:'Banana pequena + ovos mexidos', p:17, c:310},
-    {n:'Tapioca moderada + ovos', p:15, c:330},
-    {n:'Ovos cozidos + castanhas + fruta', p:18, c:360}
+    {n:'Ovos + tomate + espinafre', items:[{foodId:'ovo_galinha_cozido',qty_g:150},{foodId:'tomate',qty_g:80},{foodId:'espinafre_cru',qty_g:50}]},
+    {n:'Manga + chia + coco + ovos', items:[{foodId:'manga_palmer',qty_g:80},{foodId:'chia_seca',qty_g:10},{foodId:'coco_fresco',qty_g:15},{foodId:'ovo_galinha_cozido',qty_g:100}]},
+    {n:'Banana + ovos mexidos', items:[{foodId:'banana_prata',qty_g:70},{foodId:'ovo_galinha_mexido',qty_g:150}]},
+    {n:'Tapioca + ovos', items:[{foodId:'tapioca_pronta',qty_g:60},{foodId:'ovo_galinha_cozido',qty_g:100}]},
+    {n:'Ovos cozidos + castanhas + fruta', items:[{foodId:'ovo_galinha_cozido',qty_g:150},{foodId:'castanha_para',qty_g:15},{foodId:'maca_casca',qty_g:90}]}
   ],
   almoco:[
-    {n:'Patinho + mandioca + salada', p:50, c:620},
-    {n:'Carne moída magra + abóbora + legumes', p:48, c:580},
-    {n:'Carne magra + batata-doce + verduras', p:50, c:600},
-    {n:'Carne desfiada + legumes', p:48, c:520},
-    {n:'Bowl funcional com carne', p:46, c:560}
+    {n:'Patinho + mandioca + salada', items:[{foodId:'patinho_cozido',qty_g:230},{foodId:'mandioca_cozida',qty_g:110},{foodId:'alface_lisa',qty_g:40},{foodId:'tomate',qty_g:60},{foodId:'rucula',qty_g:30}]},
+    {n:'Carne moída + abóbora + legumes', items:[{foodId:'carne_moida_magra_cozida',qty_g:230},{foodId:'abobora_japonesa_cozida',qty_g:120},{foodId:'brocolis_cozido',qty_g:80},{foodId:'cenoura_cozida',qty_g:50}]},
+    {n:'Patinho + batata-doce + verduras', items:[{foodId:'patinho_grelhado',qty_g:230},{foodId:'batata_doce_cozida',qty_g:110},{foodId:'espinafre_refogado',qty_g:80},{foodId:'couve_refogada',qty_g:50}]},
+    {n:'Carne desfiada + legumes', items:[{foodId:'carne_desfiada_cozida',qty_g:220},{foodId:'abobrinha_cozida',qty_g:100},{foodId:'cenoura_cozida',qty_g:60},{foodId:'vagem_cozida',qty_g:60}]},
+    {n:'Bowl funcional com carne', items:[{foodId:'patinho_cozido',qty_g:200},{foodId:'quinoa_cozida',qty_g:80},{foodId:'abacate',qty_g:40},{foodId:'rucula',qty_g:30},{foodId:'tomate_cereja',qty_g:60}]}
   ],
   lanche:[
-    {n:'Ovos + café sem açúcar', p:14, c:180},
-    {n:'Fruta + castanhas', p:6, c:240},
-    {n:'Coco + chia', p:5, c:200},
-    {n:'Carne magra desfiada', p:22, c:180},
-    {n:'Smoothie leve (whey + fruta)', p:25, c:260}
+    {n:'Ovos + café', items:[{foodId:'ovo_galinha_cozido',qty_g:100},{foodId:'cafe_preto',qty_g:200}]},
+    {n:'Fruta + castanhas', items:[{foodId:'maca_casca',qty_g:90},{foodId:'castanha_para',qty_g:15}]},
+    {n:'Coco + chia + iogurte', items:[{foodId:'iogurte_natural_desnatado',qty_g:170},{foodId:'chia_seca',qty_g:10},{foodId:'coco_fresco',qty_g:10}]},
+    {n:'Carne magra desfiada', items:[{foodId:'carne_desfiada_cozida',qty_g:100}]},
+    {n:'Smoothie leve (whey + fruta)', items:[{foodId:'whey_concentrado',qty_g:30},{foodId:'banana_prata',qty_g:80},{foodId:'chia_seca',qty_g:8},{foodId:'agua_coco',qty_g:200}]}
   ],
   jantar:[
-    {n:'Carne magra + legumes', p:42, c:440},
-    {n:'Carne moída magra + vegetais', p:42, c:460},
-    {n:'Carne desfiada + vegetais', p:40, c:420},
-    {n:'Sopa proteica com carne', p:38, c:380},
-    {n:'Bowl noturno leve', p:38, c:400}
+    {n:'Carne magra + legumes', items:[{foodId:'patinho_grelhado',qty_g:210},{foodId:'brocolis_cozido',qty_g:100},{foodId:'abobrinha_cozida',qty_g:80},{foodId:'cenoura_cozida',qty_g:50}]},
+    {n:'Carne moída + vegetais', items:[{foodId:'carne_moida_magra_cozida',qty_g:200},{foodId:'couve_flor_cozida',qty_g:100},{foodId:'vagem_cozida',qty_g:80}]},
+    {n:'Frango grelhado + vegetais', items:[{foodId:'frango_peito_grelhado',qty_g:200},{foodId:'espinafre_refogado',qty_g:80},{foodId:'abobrinha_cozida',qty_g:80},{foodId:'tomate',qty_g:60}]},
+    {n:'Sopa proteica com carne', items:[{foodId:'carne_desfiada_cozida',qty_g:180},{foodId:'abobora_japonesa_cozida',qty_g:120},{foodId:'cenoura_cozida',qty_g:60},{foodId:'alho',qty_g:5}]},
+    {n:'Bowl noturno leve', items:[{foodId:'tilapia_grelhada',qty_g:200},{foodId:'rucula',qty_g:40},{foodId:'tomate',qty_g:60},{foodId:'pepino',qty_g:50},{foodId:'abacate',qty_g:30}]}
   ]
 };
 const MEAL_LABELS = {cafe:'Café da Manhã', almoco:'Almoço', lanche:'Lanche', jantar:'Jantar'};
@@ -1624,6 +1995,7 @@ setInterval(function(){
   if(document.getElementById('view-dashboard').classList.contains('active')) renderRoutine();
 }, 60000);
 
+checkAuth();
 renderAll();
 initInputs();
 
